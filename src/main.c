@@ -18,10 +18,10 @@ void InitOrbit(ecs_rows_t *rows) {
         ecs_entity_t e = ecs_set(rows->world, 0, EcsCircle, {.radius = orbit[i].size});
         ecs_set(rows->world, e, EcsPosition2D, {0, 0});
 
-        float r = 150 * (orbit[i].v / 2.0);
+        float r = 255 - (orbit[i].size);
         ecs_clamp(&r, 0, 255);
-        ecs_set(rows->world, e, EcsLineColor, {.r = r, .g = 150, .b = 255, .a = 255});
-        ecs_set(rows->world, rows->entities[i], EcsColor, {.r = r, .g = 150, .b = 255, .a = 255});
+        ecs_set(rows->world, e, EcsLineColor, {.r = r, .g = 50, .b = 255, .a = 255});
+        ecs_set(rows->world, rows->entities[i], EcsColor, {.r = r, .g = 50, .b = 255, .a = 255});
 
         if (parent) {
             ecs_adopt(rows->world, e, parent);
@@ -70,7 +70,8 @@ int main(int argc, char *argv[]) {
     });
 
     /* Create sun, planets, moons */
-    ecs_entity_t sun = ecs_new(world, Planet);
+    ecs_entity_t sun = ecs_new(world, 0);
+    ecs_set(world, sun, EcsCircle, {.radius = 25});
     ecs_set(world, sun, EcsPosition2D, {0, 0});
     ecs_set(world, sun, EcsColor, {.r = 255, .g = 255, .b = 160, .a = 255});
 
@@ -81,7 +82,7 @@ int main(int argc, char *argv[]) {
     ecs_set(world, m, Orbit, {40, 0, .v = 5});   
 
     m = ecs_new_child(world, p, Moon);
-    ecs_set(world, m, Orbit, {30, 0, .v = 7});   
+    ecs_set(world, m, Orbit, {25, 0, .v = 7});   
 
     p = ecs_new(world, Planet);
     ecs_set(world, p, Orbit, {200, 0, .v = 1});
