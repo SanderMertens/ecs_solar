@@ -5,13 +5,13 @@ typedef struct Orbit {
 } Orbit;
 
 void InitOrbit(ecs_rows_t *rows) {
-    Orbit *orbit = ecs_column(rows, Orbit, 1);
-    ecs_entity_t EOrbit = ecs_column_entity(rows, 1);
-    ecs_type_t TEcsCircle = ecs_column_type(rows, 2);
-    ecs_type_t TEcsPosition2D = ecs_column_type(rows, 3);
-    ecs_type_t TEcsLineColor = ecs_column_type(rows, 4);
-    ecs_type_t TEcsColor = ecs_column_type(rows, 5);
+    ECS_COLUMN(rows, Orbit, orbit, 1);
+    ECS_COLUMN_COMPONENT(rows, EcsCircle, 2);
+    ECS_COLUMN_COMPONENT(rows, EcsPosition2D, 3);
+    ECS_COLUMN_COMPONENT(rows, EcsLineColor, 4);
+    ECS_COLUMN_COMPONENT(rows, EcsColor, 5);
 
+    ecs_entity_t EOrbit = ecs_column_entity(rows, 1);
     ecs_entity_t parent = ecs_get_parent(rows->world, rows->entities[0], EOrbit);
 
     for (int i = 0; i < rows->count; i ++) {
@@ -30,8 +30,8 @@ void InitOrbit(ecs_rows_t *rows) {
 }
 
 void ProgressOrbit (ecs_rows_t *rows) {
-    Orbit *orbit = ecs_column(rows, Orbit, 1);
-    EcsPosition2D *position = ecs_column(rows, EcsPosition2D, 2);
+    ECS_COLUMN(rows, Orbit, orbit, 1);
+    ECS_COLUMN(rows, EcsPosition2D, position, 2);
 
     for (int i = 0; i < rows->count; i ++) {
         orbit[i].t += orbit[i].v * rows->delta_time;
@@ -51,45 +51,49 @@ int main(int argc, char *argv[]) {
 
     ECS_COMPONENT(world, Orbit);
 
-    ECS_PREFAB(world, SatellitePrefab, EcsCircle);
-    ecs_set(world, SatellitePrefab, EcsCircle, {.radius = 10});
-    ECS_TYPE(world, Satellite, SatellitePrefab, EcsPosition2D, Orbit);
+    /* Create a prefab that shared the EcsCircle component with satellites */
+    ECS_PREFAB(world, PlanetPrefab, EcsCircle);
+    ECS_PREFAB(world, MoonPrefab, EcsCircle);
+    ECS_TYPE(world, Planet, PlanetPrefab, EcsPosition2D, Orbit);
+    ECS_TYPE(world, Moon, MoonPrefab, EcsPosition2D, Orbit);
+    ecs_set(world, PlanetPrefab, EcsCircle, {.radius = 10});
+    ecs_set(world, MoonPrefab, EcsCircle, {.radius = 5});
 
+    /* System that sets color of planet & adds a ring for the orbit */
     ECS_SYSTEM(world, InitOrbit, EcsOnSet, Orbit, ID.EcsCircle, ID.EcsPosition2D, ID.EcsLineColor, ID.EcsColor);
+
+    /* System that progresses the planet along an orbit */
     ECS_SYSTEM(world, ProgressOrbit, EcsOnUpdate, Orbit, EcsPosition2D);
 
     ecs_set_singleton(world, EcsCanvas2D, {
         .window = { .width = 800, .height = 600 }, .title = "Hello ecs_solar!" 
     });
 
-    ecs_entity_t p = ecs_new(world, Satellite);
+    /* Create sun, planets, moons */
+    ecs_entity_t sun = ecs_new(world, Planet);
+    ecs_set(world, sun, EcsPosition2D, {0, 0});
+    ecs_set(world, sun, EcsColor, {.r = 255, .g = 255, .b = 160, .a = 255});
+
+    ecs_entity_t p = ecs_new(world, Planet);
     ecs_set(world, p, Orbit, {275, 0, .v = 0.5});
 
-    ecs_entity_t m = ecs_new_child(world, p, Satellite);
+    ecs_entity_t m = ecs_new_child(world, p, Moon);
     ecs_set(world, m, Orbit, {40, 0, .v = 5});   
-    ecs_set(world, m, EcsCircle, {.radius = 5});
 
-    m = ecs_new_child(world, p, Satellite);
+    m = ecs_new_child(world, p, Moon);
     ecs_set(world, m, Orbit, {30, 0, .v = 7});   
-    ecs_set(world, m, EcsCircle, {.radius = 3});
 
-    p = ecs_new(world, Satellite);
+    p = ecs_new(world, Planet);
     ecs_set(world, p, Orbit, {200, 0, .v = 1});
 
-    m = ecs_new_child(world, p, Satellite);
+    m = ecs_new_child(world, p, Moon);
     ecs_set(world, m, Orbit, {35, 0, .v = 4});   
-    ecs_set(world, m, EcsCircle, {.radius = 5});
 
-    p = ecs_new(world, Satellite);
+    p = ecs_new(world, Planet);
     ecs_set(world, p, Orbit, {125, 0, .v = 2});
 
-    p = ecs_new(world, Satellite);
+    p = ecs_new(world, Planet);
     ecs_set(world, p, Orbit, {60, 0, .v = 3});
-
-    p = ecs_new(world, 0);
-    ecs_set(world, p, EcsCircle, {.radius = 25});
-    ecs_set(world, p, EcsPosition2D, {0, 0});
-    ecs_set(world, p, EcsColor, {.r = 255, .g = 255, .b = 160, .a = 255});
 
     /* Enter main loop */
     ecs_set_target_fps(world, 120);
