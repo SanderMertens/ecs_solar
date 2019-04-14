@@ -4,31 +4,40 @@ typedef struct Orbit {
     float size, t, v;
 } Orbit;
 
+/* Create orbit circle, and set color based on orbit size */
 void InitOrbit(ecs_rows_t *rows) {
+    /* Obtain the orbit column */
     ECS_COLUMN(rows, Orbit, orbit, 1);
+
+    /* Obtain components from ID columns, so they can be used with ecs_set */
     ECS_COLUMN_COMPONENT(rows, EcsCircle, 2);
     ECS_COLUMN_COMPONENT(rows, EcsPosition2D, 3);
     ECS_COLUMN_COMPONENT(rows, EcsLineColor, 4);
     ECS_COLUMN_COMPONENT(rows, EcsColor, 5);
 
+    /* Obtain a container that has the Orbit component */
     ecs_entity_t EOrbit = ecs_column_entity(rows, 1);
     ecs_entity_t parent = ecs_get_parent(rows->world, rows->entities[0], EOrbit);
 
     for (int i = 0; i < rows->count; i ++) {
+        /* Create the orbit entity */
         ecs_entity_t e = ecs_set(rows->world, 0, EcsCircle, {.radius = orbit[i].size});
         ecs_set(rows->world, e, EcsPosition2D, {0, 0});
 
+        /* Set the color for the orbit and satellite */
         float r = 255 - (orbit[i].size);
         ecs_clamp(&r, 0, 255);
         ecs_set(rows->world, e, EcsLineColor, {.r = r, .g = 50, .b = 255, .a = 255});
         ecs_set(rows->world, rows->entities[i], EcsColor, {.r = r, .g = 50, .b = 255, .a = 255});
 
+        /* Add orbit to the parent, if there is one */
         if (parent) {
             ecs_adopt(rows->world, e, parent);
         }
     }   
 }
 
+/* Progress orbit proportionally to delta_time */
 void ProgressOrbit (ecs_rows_t *rows) {
     ECS_COLUMN(rows, Orbit, orbit, 1);
     ECS_COLUMN(rows, EcsPosition2D, position, 2);
