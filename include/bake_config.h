@@ -28,6 +28,7 @@
 #include <flecs.components.geometry>
 #include <flecs.components.graphics>
 #include <flecs.components.input>
+#include <flecs.systems.physics>
 #include <flecs.systems.sdl2>
 #include <flecs.math>
 
