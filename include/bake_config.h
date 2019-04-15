@@ -24,6 +24,7 @@
 /* Headers of public dependencies */
 #include <flecs>
 #include <flecs.components.transform>
+#include <flecs.components.physics>
 #include <flecs.components.geometry>
 #include <flecs.components.graphics>
 #include <flecs.components.input>

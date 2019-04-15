@@ -2,6 +2,7 @@
 
 typedef struct Orbit {
     float size, t, v;
+    bool hide_orbit;
 } Orbit;
 
 /* Create orbit circle, and set color based on orbit size */
@@ -20,21 +21,49 @@ void InitOrbit(ecs_rows_t *rows) {
     ecs_entity_t parent = ecs_get_parent(rows->world, rows->entities[0], EOrbit);
 
     for (int i = 0; i < rows->count; i ++) {
+        float r = 255 - (orbit[i].size * 2);
+        ecs_clamp(&r, 0, 255);
+        
         /* Create the orbit entity */
-        ecs_entity_t e = ecs_set(rows->world, 0, EcsCircle, {.radius = orbit[i].size});
-        ecs_set(rows->world, e, EcsPosition2D, {0, 0});
+        if (!orbit[i].hide_orbit) {
+            ecs_entity_t e = ecs_set(rows->world, 0, EcsCircle, {.radius = orbit[i].size});
+            ecs_set(rows->world, e, EcsPosition2D, {0, 0});
+            ecs_set(rows->world, e, EcsLineColor, {.r = r, .g = 50, .b = 255, .a = 150});
+
+            /* Add orbit to the parent, if there is one */
+            if (parent) {
+                ecs_adopt(rows->world, e, parent);
+            }
+        }
 
         /* Set the color for the orbit and satellite */
-        float r = 255 - (orbit[i].size);
-        ecs_clamp(&r, 0, 255);
-        ecs_set(rows->world, e, EcsLineColor, {.r = r, .g = 50, .b = 255, .a = 255});
         ecs_set(rows->world, rows->entities[i], EcsColor, {.r = r, .g = 50, .b = 255, .a = 255});
-
-        /* Add orbit to the parent, if there is one */
-        if (parent) {
-            ecs_adopt(rows->world, e, parent);
-        }
     }   
+}
+
+/* Initialize asteroid */
+void InitAsteroid(ecs_rows_t *rows) {
+    ECS_COLUMN(rows, EcsPolygon8, polygon, 1);
+    ECS_COLUMN(rows, Orbit, orbit, 2);
+
+    for (int i = 0; i < rows->count; i ++) {
+        /* Create random asteroid shape */
+        int v;
+        float step = 2 * M_PI / 7.0;
+        for (v = 0; v < 7; v ++) {
+            uint8_t radius = 2 + rand() % 7;
+            polygon[i].points[v].x = cos((float)v * step) * (float)radius;
+            polygon[i].points[v].y = sin((float)v * step) * (float)radius;
+        }
+        polygon[i].points[v] = polygon[i].points[0];
+        polygon[i].point_count = 8;
+
+        /* Initialize orbit */
+        orbit[i].size = 275 + rand() % 75;
+        orbit[i].t = ((float)rand() / (float)RAND_MAX) * 2 * M_PI;
+        orbit[i].v = 0.1;
+        orbit[i].hide_orbit = true;
+    }
 }
 
 /* Progress orbit proportionally to delta_time */
@@ -53,6 +82,7 @@ int main(int argc, char *argv[]) {
     ecs_world_t *world = ecs_init_w_args(argc, argv);
 
     ECS_IMPORT(world, EcsComponentsTransform, ECS_2D);
+    ECS_IMPORT(world, EcsComponentsPhysics, ECS_2D);
     ECS_IMPORT(world, EcsComponentsGeometry, ECS_2D);
     ECS_IMPORT(world, EcsComponentsGraphics, ECS_2D);
     ECS_IMPORT(world, EcsComponentsInput, ECS_2D);
@@ -63,20 +93,28 @@ int main(int argc, char *argv[]) {
     /* Create a prefab that shared the EcsCircle component with satellites */
     ECS_PREFAB(world, PlanetPrefab, EcsCircle);
     ECS_PREFAB(world, MoonPrefab, EcsCircle);
+    ECS_PREFAB(world, AsteroidPrefab, EcsAngularSpeed, EcsColor);
+    ECS_TYPE(world, Asteroid, AsteroidPrefab, EcsPosition2D, EcsRotation2D, EcsPolygon8, Orbit);
     ECS_TYPE(world, Planet, PlanetPrefab, EcsPosition2D, Orbit);
     ECS_TYPE(world, Moon, MoonPrefab, EcsPosition2D, Orbit);
     ecs_set(world, PlanetPrefab, EcsCircle, {.radius = 10});
     ecs_set(world, MoonPrefab, EcsCircle, {.radius = 5});
+    ecs_set(world, AsteroidPrefab, EcsAngularSpeed, {500});
+    ecs_set(world, AsteroidPrefab, EcsColor, {100, 100, 100, 155});
 
     /* System that sets color of planet & adds a ring for the orbit */
     ECS_SYSTEM(world, InitOrbit, EcsOnSet, Orbit, ID.EcsCircle, ID.EcsPosition2D, ID.EcsLineColor, ID.EcsColor);
+    ECS_SYSTEM(world, InitAsteroid, EcsOnAdd, EcsPolygon8, Orbit);
 
     /* System that progresses the planet along an orbit */
     ECS_SYSTEM(world, ProgressOrbit, EcsOnUpdate, Orbit, EcsPosition2D);
 
     ecs_set_singleton(world, EcsCanvas2D, {
-        .window = { .width = 800, .height = 600 }, .title = "Hello ecs_solar!" 
+        .window = { .width = 1024, .height = 800 }, .title = "Hello ecs_solar!" 
     });
+
+    /* Create asteroids */
+    ecs_new_w_count(world, Asteroid, 1000);
 
     /* Create sun, planets, moons */
     ecs_entity_t sun = ecs_new(world, 0);
@@ -84,26 +122,34 @@ int main(int argc, char *argv[]) {
     ecs_set(world, sun, EcsPosition2D, {0, 0});
     ecs_set(world, sun, EcsColor, {.r = 255, .g = 255, .b = 160, .a = 255});
 
-    ecs_entity_t p = ecs_new(world, Planet);
-    ecs_set(world, p, Orbit, {275, 0, .v = 0.5});
+    ecs_entity_t m, p = ecs_new(world, Planet);
+    ecs_set(world, p, Orbit, {450, 0, .v = 0.2});
 
-    ecs_entity_t m = ecs_new_child(world, p, Moon);
-    ecs_set(world, m, Orbit, {40, 0, .v = 5});   
-
-    m = ecs_new_child(world, p, Moon);
-    ecs_set(world, m, Orbit, {25, 0, .v = 7});   
+    for (int i = 0; i < 10; i ++) {
+        m = ecs_new_child(world, p, Moon);
+        ecs_set(world, m, Orbit, {20 + i * 7, rand() % 10, .v = 5 - i / 2.0}); 
+    }
 
     p = ecs_new(world, Planet);
-    ecs_set(world, p, Orbit, {200, 0, .v = 1});
+    ecs_set(world, p, Orbit, {250, 0, .v = 0.5});
+
+    m = ecs_new_child(world, p, Moon);
+    ecs_set(world, m, Orbit, {20, 0, .v = 4});   
+
+    m = ecs_new_child(world, p, Moon);
+    ecs_set(world, m, Orbit, {30, 0, .v = 7});   
+
+    p = ecs_new(world, Planet);
+    ecs_set(world, p, Orbit, {175, 0, .v = 1});
 
     m = ecs_new_child(world, p, Moon);
     ecs_set(world, m, Orbit, {35, 0, .v = 4});   
 
     p = ecs_new(world, Planet);
-    ecs_set(world, p, Orbit, {125, 0, .v = 2});
+    ecs_set(world, p, Orbit, {100, 0, .v = 2});
 
     p = ecs_new(world, Planet);
-    ecs_set(world, p, Orbit, {60, 0, .v = 3});
+    ecs_set(world, p, Orbit, {40, 0, .v = 3});
 
     /* Enter main loop */
     ecs_set_target_fps(world, 120);
