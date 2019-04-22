@@ -130,19 +130,20 @@ void InitAsteroidParticle(ecs_rows_t *rows) {
     }
 }
 
-/* Progress orbit proportionally to delta_time */
+/* Progress orbit */
 void ProgressOrbit (ecs_rows_t *rows) {
     ECS_COLUMN(rows, Orbit, orbit, 1);
     ECS_COLUMN(rows, EcsPosition2D, position, 2);
 
     for (int i = 0; i < rows->count; i ++) {
+        /* Simple system that keeps things moving in circles */
         orbit[i].t += orbit[i].v * rows->delta_time;
         position[i].x = cos(orbit[i].t) * orbit[i].size;
         position[i].y = sin(orbit[i].t) * orbit[i].size;
     }
 }
 
-/* Progress orbit proportionally to delta_time */
+/* Progress sun particles */
 void ProgressSun (ecs_rows_t *rows) {
     ECS_COLUMN(rows, SunParticle, particle, 1);
     ECS_COLUMN(rows, EcsPosition2D, p, 2);
@@ -154,38 +155,47 @@ void ProgressSun (ecs_rows_t *rows) {
     ecs_type_t TParticleType = 0;
 
     for (int i = 0; i < rows->count; i ++) {
-        p[i].x = cos(particle[i].a) * particle[i].r;
-        p[i].y = sin(particle[i].a) * particle[i].r;
+        /* Push the particle outwards */
         particle[i].r += particle_system->speed * rows->delta_time;
 
+        /* Derive position of particle from angle and current radius */
+        p[i].x = cos(particle[i].a) * particle[i].r;
+        p[i].y = sin(particle[i].a) * particle[i].r;
+
+        /* If r > fade radius, start fading out the particle */
         float fade_r = particle_system->fade_radius;
-        float r = particle_system->radius;
-        float r_diff = r - fade_r;
         if (particle[i].r > fade_r) {
+            float r = particle_system->radius;
+            float r_diff = r - fade_r;
             float fade_factor = ((r_diff - (particle[i].r - fade_r)) / r_diff);
 
+            /* If particle is fully faded, delete it */
             if (fade_factor <= 0) {
                 TParticleType = ecs_get_type(rows->world, rows->entities[i]);
                 ecs_delete(rows->world, rows->entities[i]);
+
+                /* Keep track of deleted particles so we can recreate them */
                 delete_count ++;
             } else {
+                /* Set alpha to new value */
                 float new_value = fade_factor * particle_system->alpha;
                 if (color[i].a > new_value) {
                     color[i].a = new_value;
                 }
             }
-        } else {
-            if (color[i].a < particle_system->alpha) {
-                color[i].a += 1;
-            }
+        } else if (color[i].a < particle_system->alpha) {
+            /* Particles start at alpha 0, gradually so fade in */            
+            color[i].a += 1;
         }
     }
 
+    /* Recreate deleted particles */
     if (delete_count) {
         ecs_new_child_w_count(rows->world, parent, ParticleType, delete_count);
     }
 }
 
+/* Utility function for creating planets and moons */
 void create_planet(
     ecs_world_t *world, ecs_type_t TOrbit,
     ecs_type_t TPlanet, 
@@ -198,6 +208,8 @@ void create_planet(
     ecs_entity_t m, p = ecs_new(world, Planet);
     ecs_set(world, p, Orbit, {orbit_radius, t, .v = speed});
 
+    /* Create moons as children of the parent, so transforms are applied
+     * hierarchically */
     for (int i = 0; i < moons; i ++) {
         m = ecs_new_child(world, p, Moon);
         ecs_set(world, m, Orbit, {20 + i * 7, rand() % 10, .v = 5 - i / 2.0});
