@@ -1,4 +1,4 @@
-#include <include/ecs_solar.h>
+#include <ecs_solar.h>
 
 /* Utility type */
 typedef struct randomized_t {
