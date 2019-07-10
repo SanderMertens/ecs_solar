@@ -78,7 +78,7 @@ void InitSunParticle(ecs_rows_t *rows) {
     ECS_COLUMN(rows, SunParticle, particle, 1);
     ECS_COLUMN(rows, EcsColor, color, 2);
     ECS_COLUMN(rows, EcsCircle, shape, 3);
-    ECS_SHARED(rows, SunParticleSystem, particle_system, 4);
+    ECS_COLUMN(rows, SunParticleSystem, particle_system, 4);
 
     for (int i = 0; i < rows->count; i ++) {
         float r = ecs_randf(particle_system->radius);
@@ -104,14 +104,14 @@ void InitAsteroidParticle(ecs_rows_t *rows) {
     ECS_COLUMN(rows, EcsPolygon8, polygon, 1);
     ECS_COLUMN(rows, Orbit, orbit, 2);
     ECS_COLUMN(rows, EcsColor, color, 3);
-    ECS_SHARED(rows, AsteroidParticleSystem, particle_system, 4);
+    ECS_COLUMN(rows, AsteroidParticleSystem, particle_system, 4);
 
     for (int i = 0; i < rows->count; i ++) {
         /* Create random asteroid shape */
         int v;
         float step = 2.0 * M_PI / 7.0;
         for (v = 0; v < 7; v ++) {
-            float radius = randomize(particle_system->radius);      
+            float radius = randomize(particle_system->radius);
             polygon[i].points[v].x = cos((float)v * step) * radius;
             polygon[i].points[v].y = sin((float)v * step) * radius;
         }
@@ -148,7 +148,7 @@ void ProgressSun (ecs_rows_t *rows) {
     ECS_COLUMN(rows, SunParticle, particle, 1);
     ECS_COLUMN(rows, EcsPosition2D, p, 2);
     ECS_COLUMN(rows, EcsColor, color, 3);
-    ECS_SHARED(rows, SunParticleSystem, particle_system, 4);
+    ECS_COLUMN(rows, SunParticleSystem, particle_system, 4);
     ecs_entity_t parent = ecs_column_source(rows, 4);
 
     int delete_count = 0;
@@ -237,9 +237,9 @@ int main(int argc, char *argv[]) {
     ECS_PREFAB(world, MoonPrefab, EcsCircle, EcsColor);
     ECS_PREFAB(world, AsteroidPrefab, EcsAngularSpeed);
     ECS_TYPE(world, SunParticleType, SunParticle, EcsPosition2D, EcsColor, EcsCircle);
-    ECS_TYPE(world, AsteroidParticleType, AsteroidPrefab, EcsPosition2D, EcsRotation2D, EcsPolygon8, Orbit, EcsColor);
-    ECS_TYPE(world, Planet, PlanetPrefab, EcsPosition2D, Orbit);
-    ECS_TYPE(world, Moon, MoonPrefab, EcsPosition2D, Orbit);
+    ECS_TYPE(world, AsteroidParticleType, INSTANCEOF | AsteroidPrefab, EcsPosition2D, EcsRotation2D, EcsPolygon8, Orbit, EcsColor);
+    ECS_TYPE(world, Planet, INSTANCEOF | PlanetPrefab, EcsPosition2D, Orbit);
+    ECS_TYPE(world, Moon, INSTANCEOF | MoonPrefab, EcsPosition2D, Orbit);
     
     /* Initialize prefabs */
     ecs_set(world, PlanetPrefab, EcsCircle, {.radius = 10});
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
     ECS_ENTITY(world, Asteroids, AsteroidParticleSystem);
 
     /* System that sets color of planet & adds a ring for the orbit */
-    ECS_SYSTEM(world, InitOrbit, EcsOnSet, Orbit, ID.EcsCircle, ID.EcsPosition2D, ID.EcsLineColor);
+    ECS_SYSTEM(world, InitOrbit, EcsOnSet, Orbit, .EcsCircle, .EcsPosition2D, .EcsLineColor);
 
     /* Systems that initialize particles for particle systems */
     ECS_SYSTEM(world, InitSunParticle,      EcsOnAdd, SunParticle, EcsColor, EcsCircle, Sun.SunParticleSystem);
@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
         .fade_radius = 20
     });
 
-    ecs_new_child_w_count(world, Sun, SunParticleType, 2000);
+    ecs_new_child_w_count(world, Sun, SunParticleType, 1000);
 
     /* Create asteroid particle system */
     ecs_set(world, Asteroids, AsteroidParticleSystem, {
