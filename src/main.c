@@ -56,7 +56,7 @@ void InitOrbit(ecs_rows_t *rows) {
 
     /* Obtain a container that has the Orbit component */
     ecs_entity_t EOrbit = ecs_column_entity(rows, 1);
-    ecs_entity_t parent = ecs_get_parent(rows->world, rows->entities[0], EOrbit);
+    ecs_entity_t parent = ecs_get_parent(rows->world, rows->entities[0], Orbit);
 
     for (int i = 0; i < rows->count; i ++) {
         /* Create the orbit entity */
@@ -197,7 +197,7 @@ void ProgressSun (ecs_rows_t *rows) {
 
 /* Utility function for creating planets and moons */
 void create_planet(
-    ecs_world_t *world, ecs_type_t TOrbit,
+    ecs_world_t *world, ecs_entity_t EOrbit,
     ecs_type_t TPlanet, 
     ecs_type_t TMoon, 
     float orbit_radius, 
@@ -291,12 +291,12 @@ int main(int argc, char *argv[]) {
     ecs_new_child_w_count(world, Asteroids, AsteroidParticleType, 250);
 
     /* Create planets and moons */
-    create_planet(world, TOrbit, TPlanet, TMoon, 420, 0,    0.2, 6);
-    create_planet(world, TOrbit, TPlanet, TMoon, 350, M_PI, 0.2, 4);
-    create_planet(world, TOrbit, TPlanet, TMoon, 220, 0,    0.5, 2);
-    create_planet(world, TOrbit, TPlanet, TMoon, 150, 0,    1,   1);
-    create_planet(world, TOrbit, TPlanet, TMoon, 100, 0,    2,   0);
-    create_planet(world, TOrbit, TPlanet, TMoon, 60,  0,    3,   0);
+    create_planet(world, EOrbit, TPlanet, TMoon, 420, 0,    0.2, 6);
+    create_planet(world, EOrbit, TPlanet, TMoon, 350, M_PI, 0.2, 4);
+    create_planet(world, EOrbit, TPlanet, TMoon, 220, 0,    0.5, 2);
+    create_planet(world, EOrbit, TPlanet, TMoon, 150, 0,    1,   1);
+    create_planet(world, EOrbit, TPlanet, TMoon, 100, 0,    2,   0);
+    create_planet(world, EOrbit, TPlanet, TMoon, 60,  0,    3,   0);
 
     /* Create drawing canvas */
     ecs_set_singleton(world, EcsCanvas2D, {
