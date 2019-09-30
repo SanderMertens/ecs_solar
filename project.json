@@ -2,8 +2,8 @@
     "id": "ecs_solar",
     "type": "application",
     "value": {
-        "author": "Jane Doe",
-        "description": "Flecs graphics application",
+        "author": "Sander Mertens",
+        "description": "Flecs application demonstrating hierarchical transformations",
         "use": [
             "flecs",
             "flecs.components.transform",
@@ -14,6 +14,17 @@
             "flecs.systems.physics",
             "flecs.systems.sdl2",
             "flecs.math"
-        ]
+        ],
+        "use-runtime": [
+            "flecs.components.http",
+            "flecs.systems.civetweb",
+            "flecs.systems.admin"
+        ],
+        "use-bundle": ["flecs.hub:default"]        
+    },
+    "bundle": {
+        "repositories": {
+            "flecs.hub": "https://github.com/flecs-hub/flecs-hub"
+        }
     }
 }
